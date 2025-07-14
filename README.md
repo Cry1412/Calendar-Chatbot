@@ -13,7 +13,7 @@ Good luck, and we look forward to seeing what you build!
 ## Getting Started
 
 1. **Fork the Repository**  
-   Start by forking this repository:  
+   Start by forking this repository.
 
 2. **Work on Your Fork**  
    Do all your work in your forked repository. Please commit your changes regularly to show your development process.
