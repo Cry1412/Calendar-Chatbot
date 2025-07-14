@@ -28,7 +28,7 @@ Your task is to build an AI-powered assistant that helps a busy professional man
 
 ### Part 1: The Personal AI Calendar Assistant (Web App)
 
-A private, webapp for user to interact with their own calendar.
+A web app with a chatbot-style interface where users can securely access, view, and manage their calendar
 
 #### Core Requirements
 
@@ -52,6 +52,9 @@ A private, webapp for user to interact with their own calendar.
 - Create a single-page web application.
 - Include a text input for commands (e.g., "summarize my day", "schedule a meeting...") and a display area for assistant responses.
 - This is your chance to get creative, surprise us with your design!
+
+**Bonus:**
+- Add basic auth to enable user to sign in privately.
 
 ---
 
