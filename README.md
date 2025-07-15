@@ -53,9 +53,6 @@ A web app with a chatbot-style interface where users can securely access, view, 
 - Include a text input for commands (e.g., "summarize my day", "schedule a meeting...") and a display area for assistant responses.
 - This is your chance to get creative, surprise us with your design!
 
-**Bonus:**
-- Add basic auth to enable user to sign in privately.
-
 ---
 
 ### Part 2: The Public Meeting Booker (Telegram Bot)
