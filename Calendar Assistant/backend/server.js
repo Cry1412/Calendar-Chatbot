@@ -4,12 +4,16 @@ const dotenv = require('dotenv');
 const { google } = require('googleapis');
 const OpenAI = require('openai');
 const moment = require('moment');
+const Database = require('./database');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Initialize database
+const db = new Database();
 
 // Middleware
 app.use(cors());
@@ -29,9 +33,6 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-
-// In-memory token storage (in production, use a database)
-let userTokens = {};
 
 // Google OAuth routes
 app.get('/auth/google', (req, res) => {
@@ -55,8 +56,8 @@ app.get('/auth/google/callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
     
-    // Store tokens (in production, save to database)
-    userTokens['default'] = tokens;
+    // Store tokens in database
+    await db.saveUserTokens('default', tokens);
     
     res.redirect('http://localhost:3000?auth=success');
   } catch (error) {
@@ -66,13 +67,18 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 // Helper function to set credentials
-function setUserCredentials(userId = 'default') {
-  const tokens = userTokens[userId];
-  if (tokens) {
-    oauth2Client.setCredentials(tokens);
-    return true;
+async function setUserCredentials(userId = 'default') {
+  try {
+    const tokens = await db.getUserTokens(userId);
+    if (tokens) {
+      oauth2Client.setCredentials(tokens);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error setting user credentials:', error);
+    return false;
   }
-  return false;
 }
 
 // API Routes
@@ -80,7 +86,7 @@ app.post('/api/assistant', async (req, res) => {
   try {
     const { message } = req.body;
     
-    if (!setUserCredentials()) {
+    if (!(await setUserCredentials())) {
       return res.status(401).json({ error: 'Not authenticated with Google Calendar' });
     }
 
@@ -101,6 +107,171 @@ app.post('/api/assistant', async (req, res) => {
     
   } catch (error) {
     console.error('Error processing request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Appointment Request Management APIs
+app.post('/api/appointment-requests', async (req, res) => {
+  try {
+    const { 
+      requesterName, 
+      requesterContact, 
+      requestedDate, 
+      requestedTime, 
+      duration, 
+      description,
+      telegramChatId 
+    } = req.body;
+
+    // Validate required fields
+    if (!requesterName || !requestedDate || !requestedTime || !duration) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Create new appointment request in database
+    const request = await db.createAppointmentRequest({
+      requesterName,
+      requesterContact,
+      requestedDate,
+      requestedTime,
+      duration,
+      description,
+      telegramChatId
+    });
+
+    console.log('📅 New appointment request received:', request);
+
+    res.json({ 
+      success: true, 
+      requestId: request.id,
+      message: 'Appointment request submitted successfully' 
+    });
+
+  } catch (error) {
+    console.error('Error creating appointment request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all appointment requests
+app.get('/api/appointment-requests', async (req, res) => {
+  try {
+    const requests = await db.getAllAppointmentRequests();
+    res.json(requests);
+  } catch (error) {
+    console.error('Error fetching appointment requests:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Accept appointment request
+app.post('/api/appointment-requests/:id/accept', async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const request = await db.getAppointmentRequestById(requestId);
+
+    if (!request) {
+      return res.status(404).json({ error: 'Appointment request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Request has already been processed' });
+    }
+
+    // Check if user is authenticated with Google Calendar
+    if (!(await setUserCredentials())) {
+      return res.status(401).json({ error: 'Not authenticated with Google Calendar' });
+    }
+
+    // Create the event in Google Calendar
+    const startDateTime = moment(`${request.requestedDate} ${request.requestedTime}`, 'YYYY-MM-DD HH:mm');
+    const endDateTime = moment(startDateTime).add(request.duration, 'minutes');
+
+    const event = {
+      summary: `Meeting with ${request.requesterName}`,
+      description: request.description || `Appointment request from ${request.requesterContact}`,
+      start: {
+        dateTime: startDateTime.toISOString(),
+        timeZone: 'America/New_York',
+      },
+      end: {
+        dateTime: endDateTime.toISOString(),
+        timeZone: 'America/New_York',
+      },
+    };
+
+    const calendarResponse = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: event,
+      sendUpdates: 'all',
+    });
+
+    // Update request status in database
+    await db.updateAppointmentRequestStatus(
+      requestId, 
+      'accepted', 
+      calendarResponse.data.id, 
+      calendarResponse.data.htmlLink
+    );
+
+    console.log('✅ Appointment request accepted and added to calendar:', request);
+
+    res.json({ 
+      success: true, 
+      message: 'Appointment accepted and added to calendar',
+      calendarEventLink: calendarResponse.data.htmlLink
+    });
+
+  } catch (error) {
+    console.error('Error accepting appointment request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Decline appointment request
+app.post('/api/appointment-requests/:id/decline', async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const request = await db.getAppointmentRequestById(requestId);
+
+    if (!request) {
+      return res.status(404).json({ error: 'Appointment request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Request has already been processed' });
+    }
+
+    // Update request status in database
+    await db.updateAppointmentRequestStatus(requestId, 'declined');
+
+    console.log('❌ Appointment request declined:', request);
+
+    res.json({ 
+      success: true, 
+      message: 'Appointment request declined' 
+    });
+
+  } catch (error) {
+    console.error('Error declining appointment request:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get appointment request by ID
+app.get('/api/appointment-requests/:id', async (req, res) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const request = await db.getAppointmentRequestById(requestId);
+
+    if (!request) {
+      return res.status(404).json({ error: 'Appointment request not found' });
+    }
+
+    res.json(request);
+  } catch (error) {
+    console.error('Error fetching appointment request:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -272,8 +443,29 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 AI Scheduling Assistant backend running on port ${PORT}`);
   console.log(`📅 Google Calendar integration ready`);
   console.log(`🤖 OpenAI integration ready`);
+  console.log(`📋 Appointment request management ready`);
+  console.log(`💾 Database storage ready`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    db.close();
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed');
+    db.close();
+    process.exit(0);
+  });
 }); 

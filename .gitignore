@@ -43,4 +43,11 @@ api_keys.txt
 
 # Session storage
 sessions/
-*.session 
+*.session
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/
+Calendar Assistant/backend/data/ 

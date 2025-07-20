@@ -23,12 +23,44 @@ An intelligent AI-powered assistant that helps busy professionals manage their G
 - **Google Calendar API** for calendar management
 - **OpenAI GPT-3.5** for natural language processing
 - **Moment.js** for date/time handling
+- **SQLite3** for persistent data storage
 
 ### Frontend
 - **React.js** with modern hooks
 - **Axios** for API communication
 - **Lucide React** for beautiful icons
 - **CSS3** with modern animations and responsive design
+
+## 💾 Database Storage
+
+The application now uses **SQLite** for persistent storage of:
+- **Appointment Requests**: All requests from Telegram bot and web interface
+- **User Tokens**: Google OAuth tokens for calendar access
+- **Request History**: Complete audit trail of all scheduling activities
+
+### Database Features
+- ✅ **Persistent Storage**: Data survives server restarts
+- ✅ **Automatic Backup**: Database management tools included
+- ✅ **Request Tracking**: Full history of all appointment requests
+- ✅ **Status Management**: Track pending, accepted, and declined requests
+- ✅ **Calendar Integration**: Links to Google Calendar events
+
+### Database Management
+```bash
+# View database statistics
+node db-manager.js stats
+
+# Create database backup
+node db-manager.js backup
+
+# Clear old requests (older than 30 days)
+node db-manager.js clear 30
+```
+
+### Database Location
+- **File**: `Calendar Assistant/backend/data/scheduling_assistant.db`
+- **Backups**: `Calendar Assistant/backend/data/backup_*.db`
+- **Auto-created**: Database and tables are created automatically on first run
 
 ## 📋 Prerequisites
 

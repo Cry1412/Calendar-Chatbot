@@ -1,6 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const GoogleCalendarService = require('./calendar');
 const moment = require('moment');
+const axios = require('axios');
 require('dotenv').config();
 
 // Lấy token từ biến môi trường
@@ -20,6 +21,9 @@ const bot = new TelegramBot(token, { polling: true });
 
 // Khởi tạo Google Calendar service
 const calendarService = new GoogleCalendarService();
+
+// Calendar Assistant API URL
+const CALENDAR_ASSISTANT_API = 'http://localhost:3001';
 
 console.log('🤖 Telegram Bot đang khởi động...');
 
@@ -42,6 +46,29 @@ bot.on('message', async (msg) => {
     } catch (error) {
         console.error('❌ Lỗi xử lý tin nhắn:', error);
         await bot.sendMessage(chatId, '❌ Có lỗi xảy ra, vui lòng thử lại sau.');
+    }
+});
+
+// Xử lý callback queries (khi user click button)
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
+    const userName = query.from.first_name || 'User';
+
+    try {
+        if (data.startsWith('schedule_')) {
+            await handleScheduleSelection(query);
+        } else if (data.startsWith('confirm_')) {
+            await handleAppointmentConfirmation(query);
+        } else if (data === 'cancel') {
+            await bot.editMessageText(
+                '❌ Đã hủy yêu cầu đặt lịch hẹn.',
+                { chat_id: chatId, message_id: query.message.message_id }
+            );
+        }
+    } catch (error) {
+        console.error('❌ Lỗi xử lý callback query:', error);
+        await bot.answerCallbackQuery(query.id, { text: '❌ Có lỗi xảy ra, vui lòng thử lại.' });
     }
 });
 
@@ -147,6 +174,9 @@ async function suggestAppointments(chatId, userName) {
         response += `⏰ *Thời gian làm việc:* 8:00 - 18:00 (Thứ 2 - Thứ 6)\n`;
         response += `🕐 *Buffer:* 15 phút trước và sau mỗi cuộc hẹn\n\n`;
         
+        // Tạo inline keyboard cho từng ngày
+        const keyboard = [];
+        
         Object.keys(suggestions).forEach(date => {
             const dayName = moment(date).format('dddd, DD/MM/YYYY');
             const times = suggestions[date].slice(0, 5); // Chỉ hiển thị 5 slot đầu tiên
@@ -156,12 +186,28 @@ async function suggestAppointments(chatId, userName) {
                 response += `⏰ ${time}\n`;
             });
             response += '\n';
+
+            // Tạo buttons cho từng time slot
+            times.forEach(time => {
+                const callbackData = `schedule_${date}_${time}`;
+                keyboard.push([{
+                    text: `${dayName} - ${time}`,
+                    callback_data: callbackData
+                }]);
+            });
         });
 
-        response += `💡 *Chọn thời gian phù hợp và gửi tin nhắn để đặt lịch hẹn!*\n\n`;
+        response += `💡 *Chọn thời gian phù hợp từ các nút bên dưới để đặt lịch hẹn!*\n\n`;
         response += `ℹ️ *Lưu ý:* Mỗi slot đã bao gồm buffer 15 phút để đảm bảo không trùng lịch.`;
         
-        await bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+        const replyMarkup = {
+            inline_keyboard: keyboard
+        };
+        
+        await bot.sendMessage(chatId, response, { 
+            parse_mode: 'Markdown',
+            reply_markup: replyMarkup
+        });
         
     } catch (error) {
         console.error('❌ Lỗi khi gợi ý lịch hẹn:', error);
@@ -170,6 +216,115 @@ async function suggestAppointments(chatId, userName) {
             'Vui lòng thử lại sau hoặc liên hệ trực tiếp.'
         );
     }
+}
+
+// Xử lý khi user chọn thời gian
+async function handleScheduleSelection(query) {
+    const chatId = query.message.chat.id;
+    const userName = query.from.first_name || 'User';
+    const data = query.data;
+    
+    // Parse data: schedule_YYYY-MM-DD_HH:mm
+    const parts = data.split('_');
+    const date = parts[1];
+    const time = parts[2];
+    
+    const formattedDate = moment(date).format('dddd, DD/MM/YYYY');
+    const formattedTime = moment(`2000-01-01T${time}`).format('h:mm A');
+    
+    const confirmationText = `📅 **Xác nhận lịch hẹn:**\n\n` +
+        `👤 **Người đặt:** ${userName}\n` +
+        `📆 **Ngày:** ${formattedDate}\n` +
+        `⏰ **Thời gian:** ${formattedTime}\n` +
+        `⏱️ **Thời lượng:** 60 phút\n\n` +
+        `Bạn có muốn gửi yêu cầu đặt lịch hẹn này không?`;
+    
+    const keyboard = {
+        inline_keyboard: [
+            [
+                {
+                    text: '✅ Xác nhận',
+                    callback_data: `confirm_${date}_${time}_${userName}`
+                },
+                {
+                    text: '❌ Hủy',
+                    callback_data: 'cancel'
+                }
+            ]
+        ]
+    };
+    
+    await bot.editMessageText(confirmationText, {
+        chat_id: chatId,
+        message_id: query.message.message_id,
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+    });
+    
+    await bot.answerCallbackQuery(query.id);
+}
+
+// Xử lý xác nhận đặt lịch hẹn
+async function handleAppointmentConfirmation(query) {
+    const chatId = query.message.chat.id;
+    const data = query.data;
+    
+    // Parse data: confirm_YYYY-MM-DD_HH:mm_UserName
+    const parts = data.split('_');
+    const date = parts[1];
+    const time = parts[2];
+    const userName = parts.slice(3).join('_'); // Handle names with spaces
+    
+    try {
+        // Gửi yêu cầu đến Calendar Assistant
+        const appointmentRequest = {
+            requesterName: userName,
+            requesterContact: 'Telegram',
+            requestedDate: date,
+            requestedTime: time,
+            duration: 60,
+            description: `Appointment request from Telegram user: ${userName}`,
+            telegramChatId: chatId.toString()
+        };
+        
+        const response = await axios.post(`${CALENDAR_ASSISTANT_API}/api/appointment-requests`, appointmentRequest);
+        
+        if (response.data.success) {
+            const successText = `✅ **Yêu cầu đặt lịch hẹn đã được gửi thành công!**\n\n` +
+                `📅 **Chi tiết:**\n` +
+                `👤 Người đặt: ${userName}\n` +
+                `📆 Ngày: ${moment(date).format('dddd, DD/MM/YYYY')}\n` +
+                `⏰ Thời gian: ${moment(`2000-01-01T${time}`).format('h:mm A')}\n` +
+                `⏱️ Thời lượng: 60 phút\n\n` +
+                `📋 Yêu cầu của bạn đã được gửi đến quản trị viên để xem xét.\n` +
+                `Bạn sẽ nhận được thông báo khi yêu cầu được xử lý.`;
+            
+            await bot.editMessageText(successText, {
+                chat_id: chatId,
+                message_id: query.message.message_id,
+                parse_mode: 'Markdown'
+            });
+            
+            console.log(`📅 Appointment request sent to Calendar Assistant:`, appointmentRequest);
+        } else {
+            throw new Error('Failed to send appointment request');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error sending appointment request:', error);
+        
+        const errorText = `❌ **Không thể gửi yêu cầu đặt lịch hẹn**\n\n` +
+            `Có lỗi xảy ra khi gửi yêu cầu của bạn.\n` +
+            `Vui lòng thử lại sau hoặc liên hệ trực tiếp.`;
+        
+        await bot.editMessageText(errorText, {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            parse_mode: 'Markdown'
+        });
+    }
+    
+    await bot.answerCallbackQuery(query.id);
 }
 
 // Hiển thị lịch hôm nay
