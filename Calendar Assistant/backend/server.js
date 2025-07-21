@@ -70,11 +70,11 @@ app.get('/auth/google/callback', async (req, res) => {
 async function setUserCredentials(userId = 'default') {
   try {
     const tokens = await db.getUserTokens(userId);
-    if (tokens) {
-      oauth2Client.setCredentials(tokens);
-      return true;
-    }
-    return false;
+  if (tokens) {
+    oauth2Client.setCredentials(tokens);
+    return true;
+  }
+  return false;
   } catch (error) {
     console.error('Error setting user credentials:', error);
     return false;

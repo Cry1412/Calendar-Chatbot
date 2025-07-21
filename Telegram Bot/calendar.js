@@ -16,26 +16,26 @@ class GoogleCalendarService {
                 process.env.GOOGLE_REDIRECT_URI
             );
 
-            // Sử dụng refresh token để lấy access token
+            // Use the refresh token to obtain an access token.
             oauth2Client.setCredentials({
                 refresh_token: process.env.GOOGLE_REFRESH_TOKEN
             });
 
             this.calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-            console.log('✅ Google Calendar API đã được khởi tạo');
+            console.log('✅ Google Calendar API has been initialized');
         } catch (error) {
-            console.error('❌ Lỗi khởi tạo Google Calendar:', error.message);
+            console.error('❌ Google Calendar initialization error:', error.message);
         }
     }
 
-    // Kiểm tra lịch rảnh trong khoảng thời gian
+    // Check availability within a specified time range
     async getFreeSlots(startDate, endDate, durationMinutes = 60) {
         if (!this.calendar) {
-            throw new Error('Google Calendar chưa được khởi tạo');
+            throw new Error('Google Calendar has not been initialized yet');
         }
 
         try {
-            // Lấy tất cả sự kiện trong khoảng thời gian
+            // Get all events within a specified time range
             const response = await this.calendar.events.list({
                 calendarId: process.env.GOOGLE_CALENDAR_ID,
                 timeMin: startDate.toISOString(),
@@ -54,27 +54,27 @@ class GoogleCalendarService {
         }
     }
 
-    // Tìm các khoảng thời gian rảnh
+    // Find available time slots
     findFreeSlots(startDate, endDate, events, durationMinutes) {
         const freeSlots = [];
         let currentTime = moment(startDate);
         const endMoment = moment(endDate);
 
-        // Chỉ xem xét thời gian làm việc (8h-18h)
+        // Only consider working hours (8 AM - 6 PM)
         const workStartHour = 9;
         const workEndHour = 17;
         
-        // Buffer 15 phút trước và sau mỗi cuộc hẹn
+        // Add a 15-minute buffer before and after each event
         const bufferMinutes = 15;
 
         while (currentTime.isBefore(endMoment)) {
-            // Bỏ qua cuối tuần
+            // Skip weekends
             if (currentTime.day() === 0 || currentTime.day() === 6) {
                 currentTime.add(1, 'day').hour(workStartHour).minute(0);
                 continue;
             }
 
-            // Bỏ qua ngoài giờ làm việc
+            // Skip outside working hours
             if (currentTime.hour() < workStartHour || currentTime.hour() >= workEndHour) {
                 currentTime.add(1, 'hour');
                 continue;
@@ -82,17 +82,17 @@ class GoogleCalendarService {
 
             const slotEnd = moment(currentTime).add(durationMinutes, 'minutes');
             
-            // Kiểm tra xem khoảng thời gian này có bị trùng với sự kiện nào không
-            // Bao gồm buffer 15 phút trước và sau mỗi cuộc hẹn
+            // Check if this time slot conflicts with any existing events
+            // Including a 15-minute buffer before and after each event
             const isConflict = events.some(event => {
                 const eventStart = moment(event.start.dateTime || event.start.date);
                 const eventEnd = moment(event.end.dateTime || event.end.date);
                 
-                // Thêm buffer trước và sau cuộc hẹn
+                // Add a 15-minute buffer before and after each event
                 const eventStartWithBuffer = moment(eventStart).subtract(bufferMinutes, 'minutes');
                 const eventEndWithBuffer = moment(eventEnd).add(bufferMinutes, 'minutes');
                 
-                // Kiểm tra xem slot hiện tại có trùng với cuộc hẹn (bao gồm buffer) không
+                // Check if the current slot conflicts with any existing event (including buffer)
                 return (currentTime.isBefore(eventEndWithBuffer) && slotEnd.isAfter(eventStartWithBuffer));
             });
 
@@ -104,20 +104,20 @@ class GoogleCalendarService {
                 });
             }
 
-            currentTime.add(30, 'minutes'); // Kiểm tra mỗi 30 phút
+            currentTime.add(30, 'minutes'); // Check every 30 minutes
         }
 
         return freeSlots;
     }
 
-    // Gợi ý lịch hẹn
+    // Suggest appointments
     async suggestAppointments(durationMinutes = 60, daysAhead = 7) {
         const startDate = moment().startOf('day');
         const endDate = moment().add(daysAhead, 'days').endOf('day');
         
         const freeSlots = await this.getFreeSlots(startDate.toDate(), endDate.toDate(), durationMinutes);
         
-        // Nhóm theo ngày
+        // Group by day
         const suggestionsByDay = {};
         freeSlots.forEach(slot => {
             const dayKey = slot.start.format('YYYY-MM-DD');
@@ -132,10 +132,10 @@ class GoogleCalendarService {
         return suggestionsByDay;
     }
 
-    // Tạo sự kiện mới
+    // Create a new event
     async createEvent(summary, startTime, endTime, description = '') {
         if (!this.calendar) {
-            throw new Error('Google Calendar chưa được khởi tạo');
+            throw new Error('Google Calendar has not been initialized yet');
         }
 
         try {
@@ -157,15 +157,15 @@ class GoogleCalendarService {
                 resource: event,
             });
 
-            console.log('✅ Đã tạo sự kiện:', response.data.htmlLink);
+            console.log('✅ Event created:', response.data.htmlLink);
             return response.data;
         } catch (error) {
-            console.error('❌ Lỗi khi tạo sự kiện:', error.message);
+            console.error('❌ Error creating event:', error.message);
             throw error;
         }
     }
 
-    // Kiểm tra xem Google Calendar có được cấu hình không
+    // Check if Google Calendar is configured
     isConfigured() {
         return !!(process.env.GOOGLE_CLIENT_ID && 
                  process.env.GOOGLE_CLIENT_SECRET && 
