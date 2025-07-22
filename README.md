@@ -1,276 +1,374 @@
-# AI Scheduling Assistant
+# AI Scheduling Assistant with Telegram Integration
 
-An intelligent AI-powered assistant that helps busy professionals manage their Google Calendar through natural language commands and automated scheduling.
+A comprehensive scheduling system that combines a web-based AI assistant with a Telegram bot for seamless appointment management. The system integrates Google Calendar, OpenAI GPT-3.5, and provides both web and Telegram interfaces for appointment scheduling.
 
-## 🚀 Features
+## 🏗️ Architectural Overview
 
-### Core Functionality
-- **Daily Summary Generation**: Get intelligent, human-like summaries of your daily schedule
-- **Natural Language Scheduling**: Schedule meetings using conversational commands
-- **Google Calendar Integration**: Seamless connection with your Google Calendar
-- **AI-Powered Responses**: Powered by OpenAI GPT for natural conversations
+### System Architecture
 
-### Key Capabilities
-- 📅 **Smart Summaries**: "You have a packed morning with back-to-back meetings, but your afternoon is clear after 2:30 PM for deep work."
-- 🗓️ **Natural Scheduling**: "Schedule a 45-minute code review with Maya tomorrow at 11 AM"
-- 🤖 **Conversational AI**: Chat naturally with your calendar assistant
-- 📱 **Modern UI**: Beautiful, responsive web interface
+The application follows a **microservices-inspired architecture** with three main components:
 
-## 🛠️ Tech Stack
+1. **Calendar Assistant Backend** (Node.js/Express)
+   - Handles Google Calendar integration via OAuth2
+   - Processes natural language requests using OpenAI GPT-3.5
+   - Manages appointment requests with SQLite database
+   - Provides RESTful API endpoints
 
-### Backend
-- **Node.js** with Express.js
-- **Google Calendar API** for calendar management
-- **OpenAI GPT-3.5** for natural language processing
-- **Moment.js** for date/time handling
-- **SQLite3** for persistent data storage
+2. **Calendar Assistant Frontend** (React.js)
+   - Modern, responsive web interface
+   - Real-time chat with AI assistant
+   - Appointment request management dashboard
+   - Google Calendar authentication flow
 
-### Frontend
-- **React.js** with modern hooks
-- **Axios** for API communication
-- **Lucide React** for beautiful icons
-- **CSS3** with modern animations and responsive design
+3. **Telegram Bot** (Node.js)
+   - Provides mobile-first appointment scheduling
+   - Integrates with Calendar Assistant backend
+   - Supports both Vietnamese and English commands
+   - Interactive inline keyboards for appointment selection
 
-## 💾 Database Storage
+### Key Architectural Decisions
 
-The application now uses **SQLite** for persistent storage of:
-- **Appointment Requests**: All requests from Telegram bot and web interface
-- **User Tokens**: Google OAuth tokens for calendar access
-- **Request History**: Complete audit trail of all scheduling activities
+**Why this architecture?**
 
-### Database Features
-- ✅ **Persistent Storage**: Data survives server restarts
-- ✅ **Automatic Backup**: Database management tools included
-- ✅ **Request Tracking**: Full history of all appointment requests
-- ✅ **Status Management**: Track pending, accepted, and declined requests
-- ✅ **Calendar Integration**: Links to Google Calendar events
+- **Separation of Concerns**: Each component has a specific responsibility, making the system modular and maintainable
+- **Scalability**: Components can be deployed independently and scaled based on demand
+- **User Experience**: Multiple interfaces (web + Telegram) provide flexibility for different user preferences
+- **Data Persistence**: SQLite database ensures appointment requests survive server restarts
+- **Real-time Integration**: Telegram bot communicates with web backend for unified appointment management
 
-### Database Management
+**Technology Choices:**
+
+- **Node.js/Express**: Fast, event-driven backend with excellent async support
+- **React.js**: Component-based frontend with modern hooks and state management
+- **SQLite**: Lightweight, serverless database perfect for this use case
+- **Google Calendar API**: Industry-standard calendar integration
+- **OpenAI GPT-3.5**: Advanced natural language processing for conversational AI
+- **Telegram Bot API**: Robust messaging platform with rich interactive features
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have the following:
+
+- **Node.js** (v16 or higher)
+- **npm** or **yarn**
+- **Google Cloud Console** account
+- **OpenAI API** account
+- **Telegram Bot** (via @BotFather)
+
+## 🔧 Setup Instructions
+
+### Step 1: Clone and Navigate
+
 ```bash
+git clone <repository-url>
+cd Calendar-Chatbot
+```
+
+### Step 2: Google Calendar API Setup
+
+1. **Create Google Cloud Project**
+   ```bash
+   # Go to https://console.cloud.google.com/
+   # Create a new project or select existing one
+   ```
+
+2. **Enable Google Calendar API**
+   ```bash
+   # In Google Cloud Console:
+   # APIs & Services > Library > Search "Google Calendar API" > Enable
+   ```
+
+3. **Create OAuth 2.0 Credentials**
+   ```bash
+   # APIs & Services > Credentials > Create Credentials > OAuth 2.0 Client IDs
+   # Application type: Web application
+   # Authorized redirect URIs: http://localhost:3001/auth/google/callback
+   ```
+
+4. **Configure OAuth Consent Screen**
+   ```bash
+   # User Type: External
+   # App name: "AI Scheduling Assistant"
+   # User support email: Your email
+   # Developer contact: Your email
+   ```
+
+5. **Download Credentials**
+   ```bash
+   # Download the JSON file and note your Client ID and Client Secret
+   ```
+
+### Step 3: OpenAI API Setup
+
+1. **Get OpenAI API Key**
+   ```bash
+   # Go to https://platform.openai.com/
+   # Create account and navigate to API Keys
+   # Create new secret key
+   ```
+
+### Step 4: Telegram Bot Setup
+
+1. **Create Telegram Bot**
+   ```bash
+   # Message @BotFather on Telegram
+   # Send: /newbot
+   # Follow instructions to create bot
+   # Save the bot token
+   ```
+
+### Step 5: Environment Configuration
+
+#### Calendar Assistant Backend
+
+```bash
+cd "Calendar Assistant/backend"
+npm install
+```
+
+Create `.env` file:
+```env
+# Google Calendar API Credentials
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
+
+# OpenAI API Key
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# Session Secret (generate random string)
+SESSION_SECRET=your_random_session_secret_here
+```
+
+#### Calendar Assistant Frontend
+
+```bash
+cd "Calendar Assistant/frontend"
+npm install
+```
+
+#### Telegram Bot
+
+```bash
+cd "Telegram Bot"
+npm install
+```
+
+Create `.env` file:
+```env
+# Telegram Bot Token
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+
+# Google Calendar API Credentials (for calendar service)
+GOOGLE_CLIENT_ID=your_google_client_id_here
+GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+GOOGLE_CALENDAR_ID=primary
+
+# Calendar Assistant API URL
+CALENDAR_ASSISTANT_API_URL=http://localhost:3001
+```
+
+## 🚀 Running the Application
+
+### Option 1: Using the Start Script (Recommended)
+
+```bash
+# From the root directory
+node start.js
+```
+
+This will start all three components:
+- Backend server on port 3001
+- Frontend on port 3000
+- Telegram bot
+
+### Option 2: Manual Startup
+
+#### Start Backend Server
+```bash
+cd "Calendar Assistant/backend"
+npm start
+# Server runs on http://localhost:3001
+```
+
+#### Start Frontend Application
+```bash
+cd "Calendar Assistant/frontend"
+npm start
+# Frontend runs on http://localhost:3000
+```
+
+#### Start Telegram Bot
+```bash
+cd "Telegram Bot"
+npm start
+# Bot starts polling for messages
+```
+
+## 🧪 Testing the Application
+
+### 1. Test Backend API
+
+```bash
+# Health check
+curl http://localhost:3001/api/health
+
+# Expected response: {"status":"OK","message":"AI Scheduling Assistant is running"}
+```
+
+### 2. Test Frontend
+
+1. **Open Browser**: Navigate to `http://localhost:3000`
+2. **Connect Google Calendar**: Click "Connect Google Calendar" and complete OAuth flow
+3. **Test Chat Interface**: Try these commands:
+   - "Summarize my day"
+   - "Schedule a meeting with John tomorrow at 2 PM"
+   - "What meetings do I have this week?"
+
+### 3. Test Telegram Bot
+
+1. **Find Your Bot**: Search for your bot on Telegram
+2. **Start Bot**: Send `/start`
+3. **Test Commands**:
+   - `/help` - View available commands
+   - `/schedule` - Get appointment suggestions
+   - `/today` - View today's schedule
+   - `/tomorrow` - View tomorrow's schedule
+
+### 4. Test Appointment Request Flow
+
+#### Via Telegram Bot:
+1. Send `/schedule` to get appointment suggestions
+2. Select a time slot from the inline keyboard
+3. Confirm the appointment request
+4. Check the web interface for the pending request
+
+#### Via Web Interface:
+1. Go to the "Requests" tab
+2. Accept or decline the request
+3. Verify the appointment appears in Google Calendar (if accepted)
+
+### 5. Test Database Functionality
+
+```bash
+cd "Calendar Assistant/backend"
+
 # View database statistics
 node db-manager.js stats
 
 # Create database backup
 node db-manager.js backup
 
-# Clear old requests (older than 30 days)
-node db-manager.js clear 30
+# Test database operations
+node test-db.js
 ```
 
-### Database Location
-- **File**: `Calendar Assistant/backend/data/scheduling_assistant.db`
-- **Backups**: `Calendar Assistant/backend/data/backup_*.db`
-- **Auto-created**: Database and tables are created automatically on first run
+### 6. Test Integration Points
 
-## 📋 Prerequisites
+#### Calendar Integration:
+- Verify appointments created via web interface appear in Google Calendar
+- Check that calendar events have proper links and descriptions
 
-Before you begin, ensure you have the following:
+#### Telegram-Web Integration:
+- Create appointment request via Telegram
+- Verify it appears in web interface
+- Accept/decline in web interface
+- Verify Telegram notification (if implemented)
 
-1. **Node.js** (v14 or higher)
-2. **npm** or **yarn**
-3. **Google Cloud Console** account
-4. **OpenAI API** key
+### Log Monitoring
 
-## 🔧 Setup Instructions
-
-### 1. Clone the Repository
-```bash
-git clone <repository-url>
-cd Calendar-Chatbot
-```
-
-### 2. Google Calendar API Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the **Google Calendar API**
-4. Go to **Credentials** → **Create Credentials** → **OAuth 2.0 Client IDs**
-5. Set up OAuth consent screen:
-   - User Type: External
-   - App name: "AI Scheduling Assistant"
-   - User support email: Your email
-   - Developer contact information: Your email
-6. Create OAuth 2.0 Client ID:
-   - Application type: Web application
-   - Authorized redirect URIs: `http://localhost:3001/auth/google/callback`
-7. Download the credentials and note your **Client ID** and **Client Secret**
-
-### 3. OpenAI API Setup
-
-1. Go to [OpenAI Platform](https://platform.openai.com/)
-2. Create an account and get your API key
-3. Note your **API Key**
-
-### 4. Environment Configuration
-
-#### Backend Setup
-```bash
-cd backend
-npm install
-```
-
-Create a `.env` file in the `backend` directory:
-```env
-# Google Calendar API Credentials
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
-
-# OpenAI API Key
-OPENAI_API_KEY=your_openai_api_key
-
-# Server Configuration
-PORT=3001
-NODE_ENV=development
-
-# Session Secret (for OAuth)
-SESSION_SECRET=your_random_session_secret_here
-```
-
-#### Frontend Setup
-```bash
-cd frontend
-npm install
-```
-
-### 5. Running the Application
-
-#### Start the Backend Server
-```bash
-cd backend
-npm start
-# or for development with auto-restart
-npm run dev
-```
-
-The backend will start on `http://localhost:3001`
-
-#### Start the Frontend Application
-```bash
-cd frontend
-npm start
-```
-
-The frontend will start on `http://localhost:3000`
-
-## 🎯 Usage Guide
-
-### Getting Started
-
-1. **Open the Application**: Navigate to `http://localhost:3000`
-2. **Connect Google Calendar**: Click "Connect Google Calendar" and authorize the application
-3. **Start Chatting**: Begin using natural language commands
-
-### Example Commands
-
-#### Daily Summaries
-- "Summarize my day"
-- "What's on my calendar today?"
-- "Give me a summary of today's schedule"
-
-#### Scheduling Meetings
-- "Schedule a 30-minute meeting with John tomorrow at 2 PM"
-- "Book a 1-hour lunch with Sarah on Friday"
-- "Create a 45-minute code review with Maya tomorrow at 11 AM"
-- "Schedule a team standup for Monday at 9 AM"
-
-#### General Queries
-- "What meetings do I have this week?"
-- "When is my next meeting?"
-- "How busy is my schedule today?"
-
-### Natural Language Processing
-
-The assistant understands various ways to express the same intent:
-
-**Scheduling Examples:**
-- "Schedule a meeting with John"
-- "Book an appointment with Sarah"
-- "Create an event with the team"
-- "Set up a call with Maya"
-
-**Time Expressions:**
-- "tomorrow at 3 PM"
-- "next Monday at 10 AM"
-- "Friday afternoon"
-- "in 2 hours"
-
-## 🔒 Security & Privacy
-
-- **OAuth 2.0**: Secure Google Calendar authentication
-- **No Data Storage**: Calendar data is not stored locally
-- **API Security**: All API keys are stored in environment variables
-- **HTTPS Ready**: Configured for production deployment
+- **Backend logs**: Check console output for API requests and errors
+- **Frontend logs**: Browser developer tools console
+- **Telegram logs**: Console output for bot interactions
 
 ## 🚀 Production Deployment
 
-### Environment Variables
-Update the following for production:
-- `GOOGLE_REDIRECT_URI`: Your production domain
-- `NODE_ENV`: Set to "production"
-- `SESSION_SECRET`: Use a strong, random secret
+### Environment Variables for Production
 
-### Google Cloud Console
-1. Update OAuth consent screen for production
-2. Add production redirect URIs
-3. Configure authorized domains
+```env
+NODE_ENV=production
+GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/google/callback
+SESSION_SECRET=strong_random_secret_here
+```
 
-### Deployment Options
-- **Heroku**: Easy deployment with environment variables
-- **Vercel**: Great for frontend deployment
-- **AWS/GCP**: Full control over infrastructure
-- **Docker**: Containerized deployment
+## 📝 API Documentation
 
-## 🐛 Troubleshooting
+### Backend Endpoints
 
-### Common Issues
+- `GET /api/health` - Health check
+- `POST /api/assistant` - Chat with AI assistant
+- `GET /api/appointment-requests` - Get all requests
+- `POST /api/appointment-requests` - Create new request
+- `POST /api/appointment-requests/:id/accept` - Accept request
+- `POST /api/appointment-requests/:id/decline` - Decline request
 
-**"Not authenticated with Google Calendar"**
-- Ensure you've completed the OAuth flow
-- Check that your Google Cloud Console credentials are correct
-- Verify the redirect URI matches exactly
+### Telegram Bot Commands
 
-**"OpenAI API Error"**
-- Check your OpenAI API key is valid
-- Ensure you have sufficient API credits
-- Verify the API key is correctly set in environment variables
-
-**"Port already in use"**
-- Change the PORT in your .env file
-- Kill any existing processes on the port
-- Use `lsof -i :3001` to find conflicting processes
-
-### Debug Mode
-Enable debug logging by setting `NODE_ENV=development` in your backend `.env` file.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Google Calendar API** for calendar integration
-- **OpenAI** for natural language processing
-- **React.js** community for the amazing framework
-- **Lucide** for beautiful icons
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the troubleshooting section above
-2. Review the Google Calendar API documentation
-3. Check OpenAI API documentation
-4. Open an issue in the repository
+- `/start` - Initialize bot
+- `/help` - Show available commands
+- `/schedule` - Get appointment suggestions
+- `/today` - Show today's schedule
+- `/tomorrow` - Show tomorrow's schedule
 
 ---
 
-**Happy Scheduling! 🎉**
+## 🧑‍💻 How to Use All Features
+
+### 1. Web Chat Assistant
+- **Access**: Open your browser and go to `http://localhost:3000`.
+- **Connect Google Calendar**: Click "Connect Google Calendar" and complete the OAuth flow.
+- **Chat**: Type natural language commands in the chat box, such as:
+  - "Summarize my day"
+  - "Schedule a meeting with John tomorrow at 2 PM"
+  - "What meetings do I have this week?"
+- **AI Responses**: The assistant will reply with summaries, scheduling options, or general information based on your input.
+
+### 2. Daily Summary
+- **Command**: In the web chat, type "Summarize my day" or "What's on my calendar today?"
+- **Result**: The assistant will generate a human-like summary of your schedule for the day, highlighting busy periods and free time.
+
+### 3. Natural Language Scheduling
+- **Command**: In the web chat, type scheduling requests such as:
+  - "Book a 1-hour lunch with Sarah on Friday"
+  - "Create a 45-minute code review with Maya tomorrow at 11 AM"
+- **Result**: The assistant will parse your request, suggest available times, and create events in your Google Calendar.
+
+### 4. Appointment Requests (Web Interface)
+- **View Requests**: Go to the "Requests" tab in the web app to see all pending, accepted, and declined appointment requests.
+- **Accept/Decline**: Click the "Accept" or "Decline" button for each request.
+  - **Accept**: The event is added to your Google Calendar, and the requester is notified (if using Telegram).
+  - **Decline**: The requester is notified that their request was declined (if using Telegram).
+- **Scroll**: Use the scroll bar to view all requests if the list is long.
+
+### 5. Telegram Bot Usage
+- **Start**: Open Telegram, search for your bot, and send `/start`.
+- **Help**: Send `/help` to see all available commands.
+- **Get Suggestions**: Send `/schedule` to receive a list of available appointment slots.
+- **Book Appointment**:
+  - Select a time slot from the inline keyboard.
+  - Confirm your choice to send an appointment request.
+  - You will receive a confirmation message.
+- **View Today's Schedule**: Send `/today` to see your free slots for today.
+- **View Tomorrow's Schedule**: Send `/tomorrow` to see your free slots for tomorrow.
+
+### 6. Cross-Platform Appointment Flow
+- **From Telegram to Web**:
+  - Book an appointment via the Telegram bot.
+  - The request appears instantly in the web interface under "Requests".
+  - The admin can accept or decline the request on the website.
+  - The Telegram user receives a notification about the decision.
+- **From Web to Calendar**:
+  - Accepting a request on the web adds the event to Google Calendar.
+  - Declining a request notifies the requester (if they used Telegram).
+
+### 7. Database and Admin Tools
+- **View Stats**: Run `node db-manager.js stats` in the backend directory to see appointment statistics.
+- **Backup Database**: Run `node db-manager.js backup` to create a backup of the database.
+
+---
+
+**Tip:** You can use both the web interface and Telegram bot interchangeably for scheduling and managing appointments. All actions are synchronized in real time!
