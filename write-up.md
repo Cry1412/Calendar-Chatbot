@@ -15,10 +15,11 @@
 ## Limitations and Future Improvements
 - **Single Admin/Calendar:** Currently, the system supports only one Google Calendar/admin. With more time, I would add multi-user and multi-calendar support for broader applicability.
 - **Manual Token Management:** The Telegram bot requires a refresh token in the `.env` file. Automating this process or providing a user-friendly authentication flow for the bot would improve usability.
-- **Scalability:** The backend is designed for local or small-scale use. For production, I would refactor for cloud deployment, add authentication/authorization, and improve error monitoring.
+- **Real-Time Communication:** While REST APIs provide a functional bridge between the Telegram bot and the web dashboard, adopting real-time technologies such as WebSockets or message brokers like Kafka or Redis Pub/Sub would improve responsiveness and scalability. This would allow instant updates across platforms and better support concurrent user interactions in a production environment.
 - **Notification System:** Currently, Telegram users are not notified when their request is accepted/declined. Adding push notifications or direct messages would enhance the user experience.
 - **Keyword-Based Prompt Handling:** The system currently relies on keyword matching to interpret user input rather than passing free-form prompts directly to the chatbot for contextual understanding. Enabling full natural language processing would allow more flexible and intelligent handling of user requests.
 - **Advanced NLP:** While GPT-3.5 is powerful, edge cases in natural language understanding may still occur. Fine-tuning prompts or adding fallback logic could improve reliability.
+- **Scalability:** The backend is designed for local or small-scale use. For production, I would refactor for cloud deployment, add authentication/authorization, and improve error monitoring.
 
 ## Bonus Feature: External User Booking via Telegram Bot
 **Feature Overview:**
