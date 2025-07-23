@@ -281,6 +281,7 @@ async function generateDailySummary() {
   try {
     const today = moment().startOf('day');
     const tomorrow = moment().endOf('day');
+    const todayString = moment().format('MMMM Do, YYYY');
     
     const response = await calendar.events.list({
       calendarId: 'primary',
@@ -293,7 +294,7 @@ async function generateDailySummary() {
     const events = response.data.items || [];
     
     if (events.length === 0) {
-      return "You have no events scheduled for today. It's a great day for focused work!";
+      return `Today is ${todayString}. You have no events scheduled for today. It's a great day for focused work!`;
     }
 
     // Format events for OpenAI
@@ -305,17 +306,9 @@ async function generateDailySummary() {
       return `- ${start.format('h:mm A')} to ${end.format('h:mm A')}: ${event.summary} (${Math.round(duration)} minutes)`;
     }).join('\n');
 
-    const prompt = `Based on the following calendar events for today, provide a concise, human-like summary of the schedule. Focus on patterns, busy periods, and free time:
-
-${eventsText}
-
-Please provide a natural summary that highlights:
-- Busy periods and back-to-back meetings
-- Available time for deep work
-- Any notable gaps or transitions
-- Overall schedule flow
-
-Keep it conversational and helpful.`;
+    const prompt = `Today is ${todayString}.
+Based on the following calendar events for today, provide a concise, human-like summary of the schedule. Focus on patterns, busy periods, and free time:
+\n${eventsText}\n\nPlease provide a natural summary that highlights:\n- Busy periods and back-to-back meetings\n- Available time for deep work\n- Any notable gaps or transitions\n- Overall schedule flow\n\nKeep it conversational and helpful.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -344,23 +337,14 @@ Keep it conversational and helpful.`;
 // Process scheduling commands
 async function processSchedulingCommand(message) {
   try {
+    const todayString = moment().format('MMMM Do, YYYY');
     // Use OpenAI to extract event details
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: `Extract calendar event details from the user's message. Return a JSON object with the following structure:
-{
-  "title": "Event title",
-  "date": "YYYY-MM-DD",
-  "time": "HH:MM",
-  "duration": minutes,
-  "attendees": ["email1@example.com", "email2@example.com"],
-  "description": "Event description if provided"
-}
-
-If date/time is relative (e.g., "tomorrow", "next week"), calculate the actual date. If no specific time is given, use 9:00 AM as default. Duration should be in minutes.`
+          content: `Today is ${todayString}. Extract calendar event details from the user's message. Return a JSON object with the following structure:\n{\n  \"title\": \"Event title\",\n  \"date\": \"YYYY-MM-DD\",\n  \"time\": \"HH:MM\",\n  \"duration\": minutes,\n  \"attendees\": [\"email1@example.com\", \"email2@example.com\"],\n  \"description\": \"Event description if provided\"\n}\n\nIf date/time is relative (e.g., \"tomorrow\", \"next week\"), calculate the actual date. If no specific time is given, use 9:00 AM as default. Duration should be in minutes.`
         },
         {
           role: "user",
@@ -402,7 +386,7 @@ If date/time is relative (e.g., "tomorrow", "next week"), calculate the actual d
       sendUpdates: 'all',
     });
 
-    return `✅ Successfully scheduled "${eventData.title}" for ${startDateTime.format('dddd, MMMM Do [at] h:mm A')}. The event has been added to your calendar.`;
+    return `✅ Successfully scheduled \"${eventData.title}\" for ${startDateTime.format('dddd, MMMM Do [at] h:mm A')}. The event has been added to your calendar.`;
     
   } catch (error) {
     console.error('Error processing scheduling command:', error);
