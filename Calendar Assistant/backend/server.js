@@ -90,13 +90,32 @@ app.post('/api/assistant', async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated with Google Calendar' });
     }
 
-    // Determine intent and process accordingly
-    const lowerMessage = message.toLowerCase();
+    // Use OpenAI to classify the intent of the message
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that classifies user intents into categories: 'summarize', 'schedule', or 'general'."
+        },
+        {
+          role: "user",
+          content: `Classify the following message: ${message}`
+        }
+      ],
+      max_tokens: 10,
+      temperature: 0.3,
+    });
+
+    const intent = completion.choices[0].message.content.trim().toLowerCase();
     
-    if (lowerMessage.includes('summarize') || lowerMessage.includes('summary')) {
+    // Process the message based on the classified intent
+    console.log('Intent:', intent);
+    console.log("fefefefefef");
+    if (intent.includes('summarize')) {
       const summary = await generateDailySummary();
       res.json({ response: summary });
-    } else if (lowerMessage.includes('schedule') || lowerMessage.includes('book') || lowerMessage.includes('create')) {
+    } else if (intent.includes('schedule')) {
       const result = await processSchedulingCommand(message);
       res.json({ response: result });
     } else {
